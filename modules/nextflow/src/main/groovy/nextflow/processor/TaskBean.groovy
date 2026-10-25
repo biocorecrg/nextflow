@@ -23,6 +23,7 @@ import groovy.transform.PackageScope
 import nextflow.container.ContainerConfig
 import nextflow.executor.BashWrapperBuilder
 import nextflow.executor.TaskArrayExecutor
+import nextflow.executor.local.LocalExecutor
 import nextflow.util.MemoryUnit
 /**
  * Serializable task value object. Holds configuration values required to
@@ -119,6 +120,8 @@ class TaskBean implements Serializable, Cloneable {
 
     Boolean stageFileEnabled
 
+    boolean compactWorkDir
+
     @PackageScope
     TaskBean() {
         shell = BashWrapperBuilder.BASH
@@ -175,6 +178,9 @@ class TaskBean implements Serializable, Cloneable {
         this.stageOutMode = task.config.getStageOutMode()
         this.resourceLabels = task.config.getResourceLabels()
         this.stageFileEnabled = task.isStageFileEnabled()
+        // ponytail: local executor only, move to Executor if another executor opts in
+        final exec = task.getProcessor().getExecutor()
+        this.compactWorkDir = exec instanceof LocalExecutor && exec.config.getExecConfigProp(exec.name, 'compactWorkDir', false).toString() == 'true'
 
         // job array
         if( task instanceof TaskArrayRun ) {

@@ -22,6 +22,8 @@ import nextflow.Session
 import nextflow.conda.CondaConfig
 import nextflow.container.DockerConfig
 import nextflow.executor.Executor
+import nextflow.executor.ExecutorConfig
+import nextflow.executor.local.LocalExecutor
 import nextflow.script.ProcessConfig
 import nextflow.util.MemoryUnit
 import spock.lang.Specification
@@ -105,6 +107,28 @@ class TaskBeanTest extends Specification {
 
         bean.useMicromamba == true
 
+    }
+
+    def 'should enable compact work dir only for the local executor' () {
+        given:
+        def process = Mock(TaskProcessor)
+        process.getSession() >> Mock(Session)
+        process.getExecutor() >> EXECUTOR
+        and:
+        def task = Mock(TaskRun)
+        task.getConfig() >> new TaskConfig()
+        task.getProcessor() >> process
+
+        expect:
+        new TaskBean(task).compactWorkDir == EXPECTED
+
+        where:
+        EXECUTOR                                                                                       | EXPECTED
+        new LocalExecutor(name: 'local', config: new ExecutorConfig(compactWorkDir: true))             | true
+        new LocalExecutor(name: 'local', config: new ExecutorConfig([:]))                              | false
+        new LocalExecutor(name: 'local', config: new ExecutorConfig(compactWorkDir: 'false'))          | false
+        new LocalExecutor(name: 'local', config: new ExecutorConfig('$local': [compactWorkDir: true])) | true
+        Mock(Executor) { getConfig() >> new ExecutorConfig(compactWorkDir: true) }                     | false
     }
 
     def 'should clone task bean' () {

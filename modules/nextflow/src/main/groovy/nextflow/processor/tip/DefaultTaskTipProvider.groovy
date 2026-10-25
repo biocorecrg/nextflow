@@ -29,7 +29,7 @@ class DefaultTaskTipProvider implements TaskTipProvider {
 
     static final private List<String> TIPS = [
         'when you have fixed the problem you can continue the execution adding the option `-resume` to the run command line',
-        "you can try to figure out what's wrong by changing to the process work dir and showing the script file named `${TaskRun.CMD_SCRIPT}`" as String,
+        "you can try to figure out what's wrong by changing to the process work dir and showing the script file named `${TaskRun.CMD_SCRIPT}` (embedded in `${TaskRun.CMD_RUN}` when `executor.compactWorkDir` is enabled)" as String,
         "view the complete command output by changing to the process work dir and entering the command `cat ${TaskRun.CMD_OUTFILE}`" as String,
         "you can replicate the issue by changing to the process work dir and entering the command `bash ${TaskRun.CMD_RUN}`" as String
     ]

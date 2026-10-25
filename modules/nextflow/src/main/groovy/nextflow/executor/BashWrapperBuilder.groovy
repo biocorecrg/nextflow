@@ -66,6 +66,8 @@ class BashWrapperBuilder {
 
     static final private ENDL = '\n'
 
+    static final private String SCRIPT_EOF = 'NXF_CMD_SCRIPT_EOF'
+
     static final public List<String> BASH
 
     static private int level
@@ -115,6 +117,9 @@ class BashWrapperBuilder {
     private Path stageFile
 
     private String stageScript
+
+    // when true the task script is embedded in the wrapper instead of written to .command.sh
+    private boolean inlineScript
 
     private BashTemplateEngine engine = new BashTemplateEngine()
 
@@ -327,7 +332,12 @@ class BashWrapperBuilder {
             script += getOutputEnvCaptureSnippet(outputEnvNames, outputEvals)
         }
 
+        // containers, Fusion and non-bash interpreters need a real .command.sh file;
+        // carriage returns would be rewritten as newlines by the template engine
+        inlineScript = compactWorkDir && !runWithContainer && !fusionEnabled && isBash(interpreter) && !script.contains('\r') && !script.readLines().contains(SCRIPT_EOF)
+
         final binding = new HashMap<String,String>(20)
+        binding.script_fn = inlineScript ? "nxf_cmd_script() {\ncat <<'${SCRIPT_EOF}'\n${script}\n${SCRIPT_EOF}\n}\n" : null
         binding.header_script = headerScript
         binding.task_metadata = getTaskMetadata()
         binding.task_name = name
@@ -349,7 +359,7 @@ class BashWrapperBuilder {
         binding.scratch_cmd = ( changeDir ?: "NXF_SCRATCH=''" )
 
         binding.exit_file = exitFile(exitedFile)
-        binding.touch_file = touchFile(startedFile)
+        binding.touch_file = compactWorkDir ? null : touchFile(startedFile)
 
         binding.module_load = getModuleLoadSnippet()
         binding.before_script = getBeforeScriptSnippet()
@@ -445,7 +455,8 @@ class BashWrapperBuilder {
 
         final wrapper = buildNew0()
         final result = write0(targetWrapperFile(), wrapper)
-        write0(targetScriptFile(), script)
+        if( !inlineScript )
+            write0(targetScriptFile(), script)
         if( input != null )
             write0(targetInputFile(), input.toString())
         if( stageScript != null )
@@ -623,7 +634,7 @@ class BashWrapperBuilder {
     }
 
     protected String getTraceCommand(String interpreter) {
-        String result = "${interpreter} ${fileStr(scriptFile)}"
+        String result = "${interpreter} ${scriptPath()}"
         if( input != null )
             result += pipeInputFile(inputFile)
 
@@ -644,6 +655,10 @@ class BashWrapperBuilder {
             : shell.join(' ')
     }
 
+    private String scriptPath() {
+        return inlineScript ? '<(nxf_cmd_script)' : fileStr(scriptFile)
+    }
+
     protected String getLaunchCommand(String interpreter, String env) {
         /*
         * process stats
@@ -658,7 +673,7 @@ class BashWrapperBuilder {
             launcher = "${shellPath()} ${fileStr(wrapperFile)} nxf_trace"
         }
         else {
-            launcher = "${interpreter} ${fileStr(scriptFile)}"
+            launcher = "${interpreter} ${scriptPath()}"
         }
 
         /*

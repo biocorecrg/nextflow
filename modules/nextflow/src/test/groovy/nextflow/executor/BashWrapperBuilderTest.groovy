@@ -185,6 +185,59 @@ class BashWrapperBuilderTest extends Specification {
         folder?.deleteDir()
     }
 
+    def 'should inline the task script with compact work dir' () {
+        given:
+        def folder = Files.createTempDirectory('test')
+
+        when:
+        newBashWrapperBuilder(
+                workDir: folder,
+                compactWorkDir: true,
+                statsEnabled: STATS,
+                input: 'from stdin',
+                script: 'echo "got $(cat)"; exit 3' ).build()
+        def exit = new ProcessBuilder('bash', '.command.run').directory(folder.toFile()).start().waitFor()
+
+        then:
+        !Files.exists(folder.resolve('.command.sh'))
+        !Files.exists(folder.resolve('.command.begin'))
+        folder.resolve('.command.run').text.contains('<(nxf_cmd_script)')
+        and:
+        exit == 3
+        folder.resolve('.exitcode').text == '3'
+        folder.resolve('.command.out').text == 'got from stdin\n'
+
+        cleanup:
+        folder?.deleteDir()
+
+        where:
+        STATS << [false, true]
+    }
+
+    def 'should write the task script with compact work dir when it cannot be inlined' () {
+        given:
+        def folder = Files.createTempDirectory('test')
+
+        when:
+        newBashWrapperBuilder([workDir: folder, compactWorkDir: true] + OPTS).build()
+
+        then:
+        Files.exists(folder.resolve('.command.sh'))
+        !Files.exists(folder.resolve('.command.begin'))
+        !folder.resolve('.command.run').text.contains('nxf_cmd_script')
+
+        cleanup:
+        folder?.deleteDir()
+
+        where:
+        OPTS << [
+            [script: '#!/usr/bin/env python\nprint("hi")'],
+            [script: 'cat <<NXF_CMD_SCRIPT_EOF\nhi\nNXF_CMD_SCRIPT_EOF'],
+            [script: 'printf "a\rb"'],
+            [containerImage: 'busybox', containerEnabled: true, containerConfig: new DockerConfig(enabled: true)],
+        ]
+    }
+
 
     def 'should create module command' () {
         given:

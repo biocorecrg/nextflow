@@ -22,6 +22,7 @@ NXF_ENTRY=${1:-nxf_main}
 
 {{trace_script}}
 {{helpers_script}}
+{{script_fn}}
 {{container_env}}
 
 nxf_sleep() {

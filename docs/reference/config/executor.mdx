@@ -15,6 +15,16 @@ The `executor` scope controls various executor behaviors. To apply these setting
 
 The project or organization account that should be charged for running the pipeline jobs.
 
+##### `executor.compactWorkDir`
+
+<AddedInVersion version="26.11" />
+
+*Used only by the local executor.*
+
+When `true`, task work directories are created without the `.command.sh` and `.command.begin` files: the task script is embedded in `.command.run` instead. This reduces file operations per task, which can noticeably speed up pipelines with many short tasks when the work directory is on a shared file system (default: `false`).
+
+The task script is still written to `.command.sh` when the task runs in a container, when Fusion is enabled, or when the script does not use Bash. When the script is embedded, error messages and `$0` refer to `/dev/fd/<N>` instead of `.command.sh`. Use `nextflow log <run name> -f name,script` to view the script of a task.
+
 ##### `executor.cpus`
 
 <ChangedInVersion version="26.10">

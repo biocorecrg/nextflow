@@ -41,6 +41,14 @@ class ExecutorConfig implements ConfigScope {
 
     @ConfigOption
     @Description("""
+        *Used only by the local executor.*
+
+        When `true`, task work directories are created without the `.command.sh` and `.command.begin` files: the task script is embedded in `.command.run` instead. This reduces file operations per task, which can noticeably speed up pipelines with many short tasks when the work directory is on a shared file system (default: `false`).
+    """)
+    final Boolean compactWorkDir
+
+    @ConfigOption
+    @Description("""
         *Used only by the local executor and grid executors.*
 
         The maximum number of CPUs that can be requested by submitted tasks. Pending tasks are not submitted until enough CPUs are available, and a task that requests more CPUs than this limit fails. A job array counts the CPUs of all its tasks. Only CPUs requested with the `cpus` directive are counted (not `clusterOptions`), and a task without it counts as 1 CPU. For the local executor, the default is the number of CPUs on the system. For grid executors, there is no limit by default.
@@ -170,6 +178,7 @@ class ExecutorConfig implements ConfigScope {
 
     ExecutorConfig(Map opts) {
         account = opts.account
+        compactWorkDir = opts.compactWorkDir != null ? opts.compactWorkDir.toString() == 'true' : null
         cpus = opts.cpus as Integer
         dumpInterval = opts.dumpInterval as Duration ?: Duration.of('5min')
         exitReadTimeout = opts.exitReadTimeout as Duration ?: Duration.of('270sec')
